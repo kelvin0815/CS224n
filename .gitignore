@@ -1,4 +1,6 @@
 *.zip
 *.pyc
 *.npy
-*/utils/datasets
+*/utils
+*/.idea
+*/data

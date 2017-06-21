@@ -195,7 +195,20 @@ def cbow(currentWord, C, contextWords, tokens, inputVectors, outputVectors,
     gradOut = np.zeros(outputVectors.shape)
 
     ### YOUR CODE HERE
-    raise NotImplementedError
+    indices = [tokens[word] for word in contextWords]
+    predicted = np.sum(inputVectors[indices, :], axis=0)
+
+    target = tokens[currentWord]
+
+    cost, gradPred, gradOut = word2vecCostAndGradient(
+        predicted,
+        target,
+        outputVectors,
+        dataset
+    )
+
+    for index in indices:
+        gradIn[index] += gradPred
     ### END YOUR CODE
 
     return cost, gradIn, gradOut
@@ -261,13 +274,13 @@ def test_word2vec():
     gradcheck_naive(lambda vec: word2vec_sgd_wrapper(
         skipgram, dummy_tokens, vec, dataset, 5, negSamplingCostAndGradient),
         dummy_vectors)
-    """print "\n==== Gradient check for CBOW      ===="
+    print "\n==== Gradient check for CBOW      ===="
     gradcheck_naive(lambda vec: word2vec_sgd_wrapper(
         cbow, dummy_tokens, vec, dataset, 5, softmaxCostAndGradient),
         dummy_vectors)
     gradcheck_naive(lambda vec: word2vec_sgd_wrapper(
         cbow, dummy_tokens, vec, dataset, 5, negSamplingCostAndGradient),
-        dummy_vectors)"""
+        dummy_vectors)
 
     print "\n=== Results ==="
     cost, gradIn, gradOut = skipgram("c", 3, ["a", "b", "e", "d", "b", "c"],
@@ -277,11 +290,13 @@ def test_word2vec():
         dummy_tokens, dummy_vectors[:5,:], dummy_vectors[5:,:], dataset,
         negSamplingCostAndGradient)
     print_data(cost, gradIn, gradOut)
-    """print cbow("a", 2, ["a", "b", "c", "a"],
+    cost, gradIn, gradOut = cbow("a", 2, ["a", "b", "c", "a"],
         dummy_tokens, dummy_vectors[:5,:], dummy_vectors[5:,:], dataset)
-    print cbow("a", 2, ["a", "b", "a", "c"],
+    print_data(cost, gradIn, gradOut)
+    cost, gradIn, gradOut = cbow("a", 2, ["a", "b", "a", "c"],
         dummy_tokens, dummy_vectors[:5,:], dummy_vectors[5:,:], dataset,
-        negSamplingCostAndGradient)"""
+        negSamplingCostAndGradient)
+    print_data(cost, gradIn, gradOut)
 
 
 if __name__ == "__main__":
