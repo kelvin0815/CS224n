@@ -21,6 +21,9 @@ class PartialParse(object):
         self.sentence = sentence
 
         ### YOUR CODE HERE
+        self.stack = ["ROOT"]
+        self.buffer = sentence[:]
+        self.dependencies = []
         ### END YOUR CODE
 
     def parse_step(self, transition):
@@ -31,6 +34,17 @@ class PartialParse(object):
                         and right-arc transitions.
         """
         ### YOUR CODE HERE
+        assert transition in set(["S", "LA", "RA"])
+        if transition == "S" and len(self.buffer) > 0:
+            self.stack.append(self.buffer.pop(0))
+        elif transition == "LA" and len(self.stack) > 1:
+            dependent, head = self.stack[-2:]
+            self.dependencies.append((head, dependent))
+            self.stack.pop(-2)
+        elif transition == "RA" and len(self.stack) > 1:
+            head, dependent = self.stack[-2:]
+            self.dependencies.append((head, dependent))
+            self.stack.pop(-1)
         ### END YOUR CODE
 
     def parse(self, transitions):
@@ -65,6 +79,27 @@ def minibatch_parse(sentences, model, batch_size):
     """
 
     ### YOUR CODE HERE
+    # 0. Help Function: Check if a PartialParse object is completely parsed
+    def is_completely_parsed(partial_parse):
+        return len(partial_parse.stack) == 1 and \
+               len(partial_parse.buffer) == 0 and \
+               len(partial_parse.dependencies) == len(partial_parse.sentence)
+
+    # 1. Initialization
+    partial_parses = [PartialParse(s) for s in sentences]
+    unfinished_parses = partial_parses[:]
+
+    # 2. Loop through unfinished_parses to perform parse_step
+    while unfinished_parses:
+        minibatch = unfinished_parses[:batch_size]
+        minibatch_transitions = model.predict(minibatch)
+        for i, transition in enumerate(minibatch_transitions):
+            minibatch[i].parse_step(transition)
+            if is_completely_parsed(minibatch[i]):
+                unfinished_parses.remove(minibatch[i])
+
+    # 3. Extract dependencies from each PartialParse object
+    dependencies = [pp.dependencies for pp in partial_parses]
     ### END YOUR CODE
 
     return dependencies
@@ -149,6 +184,7 @@ def test_minibatch_parse():
     test_dependencies("minibatch_parse", deps[3],
                       (('again', 'ROOT'), ('again', 'arcs'), ('again', 'left'), ('again', 'only')))
     print "minibatch_parse test passed!"
+
 
 if __name__ == '__main__':
     test_parse_step()

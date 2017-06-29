@@ -54,6 +54,10 @@ class ParserModel(Model):
         (Don't change the variable names)
         """
         ### YOUR CODE HERE
+        n_features, n_classes = self.config.n_features, self.config.n_classes
+        self.input_placeholder = tf.placeholder(tf.int32, (None, n_features), name='input')
+        self.labels_placeholder = tf.placeholder(tf.float32, (None, n_classes), name='labels')
+        self.dropout_placeholder = tf.placeholder(tf.float32, name='dropout')
         ### END YOUR CODE
 
     def create_feed_dict(self, inputs_batch, labels_batch=None, dropout=1):
@@ -79,6 +83,12 @@ class ParserModel(Model):
             feed_dict: The feed dictionary mapping from placeholders to values.
         """
         ### YOUR CODE HERE
+        feed_dict = {
+            self.input_placeholder: inputs_batch,
+            self.dropout_placeholder: dropout
+        }
+        if labels_batch is not None:
+            feed_dict[self.labels_placeholder] = labels_batch
         ### END YOUR CODE
         return feed_dict
 
@@ -100,6 +110,11 @@ class ParserModel(Model):
             embeddings: tf.Tensor of shape (None, n_features*embed_size)
         """
         ### YOUR CODE HERE
+        n_features = self.config.n_features
+        embed_size = self.config.embed_size
+        embeddings = tf.nn.embedding_lookup(self.pretrained_embeddings,
+                                            self.input_placeholder)
+        embeddings = tf.reshape(embeddings, (-1, n_features*embed_size))
         ### END YOUR CODE
         return embeddings
 
@@ -121,7 +136,7 @@ class ParserModel(Model):
                     b1: (hidden_size,)
                     U:  (hidden_size, n_classes)
                     b2: (n_classes)
-        Hint: Note that tf.nn.dropout takes the keep probability (1 - p_drop) as an argument. 
+        Hint: Note that tf.nn.dropout takes the keep probability (1 - p_drop) as an argument.
             The keep probability should be set to the value of self.dropout_placeholder
 
         Returns:
@@ -130,6 +145,21 @@ class ParserModel(Model):
 
         x = self.add_embedding()
         ### YOUR CODE HERE
+        xavier_initializer = xavier_weight_init()
+
+        n_features = self.config.n_features
+        embed_size = self.config.embed_size
+        hidden_size = self.config.hidden_size
+        n_classes = self.config.n_classes
+
+        W = tf.Variable(xavier_initializer((n_features*embed_size, hidden_size)))
+        b1 = tf.Variable(tf.zeros((hidden_size,)))
+        U = tf.Variable(xavier_initializer((hidden_size, n_classes)))
+        b2 = tf.Variable(tf.zeros((n_classes,)))
+
+        h = tf.nn.relu(tf.matmul(x, W) + b1)
+        h_drop = tf.nn.dropout(h, self.dropout_placeholder)
+        pred = tf.matmul(h_drop, U) + b2
         ### END YOUR CODE
         return pred
 
@@ -147,6 +177,8 @@ class ParserModel(Model):
             loss: A 0-d tensor (scalar)
         """
         ### YOUR CODE HERE
+        loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=self.labels_placeholder,
+                                                                      logits=pred))
         ### END YOUR CODE
         return loss
 
@@ -170,6 +202,7 @@ class ParserModel(Model):
             train_op: The Op for training.
         """
         ### YOUR CODE HERE
+        train_op = tf.train.AdamOptimizer(self.config.lr).minimize(loss)
         ### END YOUR CODE
         return train_op
 
@@ -208,7 +241,7 @@ class ParserModel(Model):
         self.build()
 
 
-def main(debug=True):
+def main(debug=False):
     print 80 * "="
     print "INITIALIZING"
     print 80 * "="
@@ -255,5 +288,3 @@ def main(debug=True):
 
 if __name__ == '__main__':
     main()
-
-
